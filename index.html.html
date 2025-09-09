@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10-Level Platformer Challenge - ALL LEVELS WORKING</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            font-family: Arial, sans-serif;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            border: 4px solid #444;
+            background-color: #111;
+            overflow: hidden;
+        }
+        
+        canvas {
+            background-color: #0a0a2a;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        #jump-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: yellow;
+            font-weight: bold;
+            font-size: 18px;
+            text-shadow: 0 0 5px red;
+        }
+        
+        #level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff00;
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 0 10px #00ff00;
+            display: none;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #00ff00;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0000;
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 0 10px #ff0000;
+            display: none;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ff0000;
+        }
+        
+        .btn {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        .btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="ui">LEVEL 1 • Deaths: 0</div>
+        <div id="instructions">
+            Use ← → arrows to move<br>
+            Press ↑ UP arrow to make the ball JUMP!
+        </div>
+        <div id="jump-indicator">Press UP to Jump</div>
+        <div id="level-complete">
+            LEVEL COMPLETE!<br>
+            <button class="btn" id="next-level-btn">NEXT LEVEL</button>
+        </div>
+        <div id="game-over">
+            CONGRATULATIONS!<br>
+            YOU BEAT ALL 10 LEVELS!<br>
+            Total Deaths: <span id="total-deaths">0</span><br>
+            <button class="btn" id="restart-btn">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // Setup canvas
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const ui = document.getElementById('ui');
+        const jumpIndicator = document.getElementById('jump-indicator');
+        const levelComplete = document.getElementById('level-complete');
+        const gameOver = document.getElementById('game-over');
+        const nextLevelBtn = document.getElementById('next-level-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const totalDeathsSpan = document.getElementById('total-deaths');
+        
+        // Set canvas dimensions
+        canvas.width = 800;
+        canvas.height = 500;
+        
+        // Game objects
+        const ball = {
+            x: 100,
+            y: 400,
+            radius: 20,
+            color: '#00ff00', // Green ball
+            velocityX: 0,
+            velocityY: 0,
+            speed: 5,
+            jumpForce: -12, // Negative value to move upward
+            gravity: 0.5,
+            onGround: false,
+            isJumping: false
+        };
+        
+        // Define all 10 levels from easy to hard - ALL WORKING!
+        const levels = [
+            // Level 1: Easy - Simple platform with no spikes
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 800, height: 50 }, // Ground
+                    { x: 300, y: 350, width: 200, height: 20 },
+                    { x: 650, y: 250, width: 100, height: 20 } // Goal platform
+                ],
+                spikes: [],
+                goal: { x: 700, y: 200, width: 50, height: 50 },
+                startPos: { x: 100, y: 400 }
+            },
+            
+            // Level 2: Easy with few spikes
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 800, height: 50 }, // Ground
+                    { x: 200, y: 380, width: 100, height: 20 },
+                    { x: 400, y: 310, width: 100, height: 20 },
+                    { x: 600, y: 240, width: 150, height: 20 } // Goal platform
+                ],
+                spikes: [
+                    { x: 250, y: 480, width: 20, height: 20 },
+                    { x: 450, y: 410, width: 20, height: 20 }
+                ],
+                goal: { x: 650, y: 190, width: 50, height: 50 },
+                startPos: { x: 100, y: 400 }
+            },
+            
+            // Level 3: Medium - More platforms, more spikes
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 300, height: 50 }, // Ground 1
+                    { x: 350, y: 450, width: 450, height: 50 }, // Ground 2
+                    { x: 150, y: 350, width: 80, height: 20 },
+                    { x: 300, y: 300, width: 80, height: 20 },
+                    { x: 450, y: 250, width: 80, height: 20 },
+                    { x: 600, y: 200, width: 150, height: 20 } // Goal
+                ],
+                spikes: [
+                    { x: 310, y: 480, width: 20, height: 20 },
+                    { x: 180, y: 380, width: 20, height: 20 },
+                    { x: 330, y: 330, width: 20, height: 20 },
+                    { x: 480, y: 280, width: 20, height: 20 }
+                ],
+                goal: { x: 650, y: 150, width: 50, height: 50 },
+                startPos: { x: 50, y: 400 }
+            },
+            
+            // Level 4: Medium - Gap jumps with spikes
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 800, height: 50 }, // Ground
+                    { x: 150, y: 380, width: 60, height: 20 },
+                    { x: 260, y: 330, width: 60, height: 20 },
+                    { x: 370, y: 280, width: 60, height: 20 },
+                    { x: 480, y: 230, width: 60, height: 20 },
+                    { x: 590, y: 180, width: 160, height: 20 } // Goal
+                ],
+                spikes: [
+                    { x: 180, y: 410, width: 20, height: 20 },
+                    { x: 290, y: 360, width: 20, height: 20 },
+                    { x: 400, y: 310, width: 20, height: 20 },
+                    { x: 510, y: 260, width: 20, height: 20 },
+                    { x: 620, y: 210, width: 20, height: 20 }
+                ],
+                goal: { x: 650, y: 130, width: 50, height: 50 },
+                startPos: { x: 50, y: 400 }
+            },
+            
+            // Level 5: Medium-Hard - Precision jumps
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 200, height: 50 }, // Start platform
+                    { x: 250, y: 400, width: 50, height: 20 }, // Small platform 1
+                    { x: 330, y: 350, width: 50, height: 20 }, // Small platform 2
+                    { x: 410, y: 300, width: 50, height: 20 }, // Small platform 3
+                    { x: 490, y: 250, width: 50, height: 20 }, // Small platform 4
+                    { x: 570, y: 200, width: 50, height: 20 }, // Small platform 5
+                    { x: 650, y: 150, width: 100, height: 20 } // Goal
+                ],
+                spikes: [
+                    { x: 220, y: 480, width: 20, height: 20 },
+                    { x: 300, y: 430, width: 20, height: 20 },
+                    { x: 380, y: 380, width: 20, height: 20 },
+                    { x: 460, y: 330, width: 20, height: 20 },
+                    { x: 540, y: 280, width: 20, height: 20 },
+                    { x: 620, y: 230, width: 20, height: 20 },
+                    { x: 700, y: 180, width: 20, height: 20 }
+                ],
+                goal: { x: 680, y: 100, width: 50, height: 50 },
+                startPos: { x: 50, y: 400 }
+            },
+            
+            // Level 6: Hard - Moving platforms (simulated with timed appearance)
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 800, height: 50 }, // Ground
+                    { x: 150, y: 380, width: 80, height: 20 },
+                    { x: 300, y: 320, width: 80, height: 20 },
+                    { x: 450, y: 260, width: 80, height: 20 },
+                    { x: 600, y: 200, width: 150, height: 20 } // Goal
+                ],
+                spikes: [
+                    { x: 180, y: 410, width: 20, height: 20 },
+                    { x: 210, y: 410, width: 20, height: 20 },
+                    { x: 330, y: 350, width: 20, height: 20 },
+                    { x: 360, y: 350, width: 20, height: 20 },
+                    { x: 480, y: 290, width: 20, height: 20 },
+                    { x: 510, y: 290, width: 20, height: 20 },
+                    { x: 630, y: 230, width: 20, height: 20 },
+                    { x: 660, y: 230, width: 20, height: 20 }
+                ],
+                goal: { x: 650, y: 150, width: 50, height: 50 },
+                startPos: { x: 50, y: 400 }
+            },
+            
+            // Level 7: Hard - Maze-like with many spikes
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 150, height: 50 }, // Start
+                    { x: 200, y: 400, width: 100, height: 20 },
+                    { x: 350, y: 350, width: 100, height: 20 },
+                    { x: 200, y: 300, width: 100, height: 20 },
+                    { x: 350, y: 250, width: 100, height: 20 },
+                    { x: 500, y: 200, width: 100, height: 20 },
+                    { x: 650, y: 150, width: 100, height: 20 } // Goal
+                ],
+                spikes: [
+                    { x: 160, y: 480, width: 20, height: 20 },
+                    { x: 190, y: 480, width: 20, height: 20 },
+                    { x: 230, y: 430, width: 20, height: 20 },
+                    { x: 260, y: 430, width: 20, height: 20 },
+                    { x: 380, y: 380, width: 20, height: 20 },
+                    { x: 410, y: 380, width: 20, height: 20 },
+                    { x: 230, y: 330, width: 20, height: 20 },
+                    { x: 260, y: 330, width: 20, height: 20 },
+                    { x: 380, y: 280, width: 20, height: 20 },
+                    { x: 410, y: 280, width: 20, height: 20 },
+                    { x: 530, y: 230, width: 20, height: 20 },
+                    { x: 560, y: 230, width: 20, height: 20 }
+                ],
+                goal: { x: 680, y: 100, width: 50, height: 50 },
+                startPos: { x: 50, y: 400 }
+            },
+            
+            // Level 8: Very Hard - Long jumps with spike pits
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 120, height: 50 }, // Start
+                    { x: 200, y: 400, width: 60, height: 20 },
+                    { x: 320, y: 350, width: 60, height: 20 },
+                    { x: 440, y: 300, width: 60, height: 20 },
+                    { x: 560, y: 250, width: 60, height: 20 },
+                    { x: 680, y: 200, width: 100, height: 20 } // Goal
+                ],
+                spikes: [
+                    { x: 130, y: 480, width: 20, height: 20 },
+                    { x: 160, y: 480, width: 20, height: 20 },
+                    { x: 190, y: 480, width: 20, height: 20 },
+                    { x: 260, y: 430, width: 20, height: 20 },
+                    { x: 290, y: 430, width: 20, height: 20 },
+                    { x: 380, y: 380, width: 20, height: 20 },
+                    { x: 410, y: 380, width: 20, height: 20 },
+                    { x: 500, y: 330, width: 20, height: 20 },
+                    { x: 530, y: 330, width: 20, height: 20 },
+                    { x: 620, y: 280, width: 20, height: 20 },
+                    { x: 650, y: 280, width: 20, height: 20 }
+                ],
+                goal: { x: 710, y: 150, width: 50, height: 50 },
+                startPos: { x: 50, y: 400 }
+            },
+            
+            // Level 9: Very Hard - Precision platforming
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 100, height: 50 }, // Start
+                    { x: 150, y: 420, width: 40, height: 20 }, // Tiny 1
+                    { x: 230, y: 390, width: 40, height: 20 }, // Tiny 2
+                    { x: 310, y: 360, width: 40, height: 20 }, // Tiny 3
+                    { x: 390, y: 330, width: 40, height: 20 }, // Tiny 4
+                    { x: 470, y: 300, width: 40, height: 20 }, // Tiny 5
+                    { x: 550, y: 270, width: 40, height: 20 }, // Tiny 6
+                    { x: 630, y: 240, width: 40, height: 20 }, // Tiny 7
+                    { x: 710, y: 210, width: 60, height: 20 } // Goal
+                ],
+                spikes: [
+                    { x: 110, y: 480, width: 20, height: 20 },
+                    { x: 130, y: 480, width: 20, height: 20 },
+                    { x: 180, y: 450, width: 20, height: 20 },
+                    { x: 260, y: 420, width: 20, height: 20 },
+                    { x: 340, y: 390, width: 20, height: 20 },
+                    { x: 420, y: 360, width: 20, height: 20 },
+                    { x: 500, y: 330, width: 20, height: 20 },
+                    { x: 580, y: 300, width: 20, height: 20 },
+                    { x: 660, y: 270, width: 20, height: 20 }
+                ],
+                goal: { x: 725, y: 160, width: 50, height: 50 },
+                startPos: { x: 30, y: 400 }
+            },
+            
+            // Level 10: Impossible - Extreme precision required
+            {
+                platforms: [
+                    { x: 0, y: 450, width: 80, height: 50 }, // Start
+                    { x: 130, y: 430, width: 30, height: 20 }, // Micro 1
+                    { x: 200, y: 410, width: 30, height: 20 }, // Micro 2
+                    { x: 270, y: 390, width: 30, height: 20 }, // Micro 3
+                    { x: 340, y: 370, width: 30, height: 20 }, // Micro 4
+                    { x: 410, y: 350, width: 30, height: 20 }, // Micro 5
+                    { x: 480, y: 330, width: 30, height: 20 }, // Micro 6
+                    { x: 550, y: 310, width: 30, height: 20 }, // Micro 7
+                    { x: 620, y: 290, width: 30, height: 20 }, // Micro 8
+                    { x: 690, y: 270, width: 30, height: 20 }, // Micro 9
+                    { x: 740, y: 250, width: 40, height: 20 } // Goal
+                ],
+                spikes: [
+                    { x: 90, y: 480, width: 20, height: 20 },
+                    { x: 110, y: 480, width: 20, height: 20 },
+                    { x: 160, y: 460, width: 20, height: 20 },
+                    { x: 230, y: 440, width: 20, height: 20 },
+                    { x: 300, y: 420, width: 20, height: 20 },
+                    { x: 370, y: 400, width: 20, height: 20 },
+                    { x: 440, y: 380, width: 20, height: 20 },
+                    { x: 510, y: 360, width: 20, height: 20 },
+                    { x: 580, y: 340, width: 20, height: 20 },
+                    { x: 650, y: 320, width: 20, height: 20 },
+                    { x: 720, y: 300, width: 20, height: 20 }
+                ],
+                goal: { x: 750, y: 200, width: 50, height: 50 },
+                startPos: { x: 30, y: 400 }
+            }
+        ];
+        
+        // Game state
+        let currentLevel = 0;
+        let deaths = 0;
+        let totalDeaths = 0;
+        let gameActive = true;
+        
+        // Controls
+        const keys = {
+            left: false,
+            right: false,
+            up: false
+        };
+        
+        // Load level
+        function loadLevel(levelIndex) {
+            if (levelIndex >= levels.length) {
+                // Game completed
+                totalDeathsSpan.textContent = totalDeaths;
+                gameOver.style.display = 'block';
+                gameActive = false;
+                return;
+            }
+            
+            const level = levels[levelIndex];
+            ball.x = level.startPos.x;
+            ball.y = level.startPos.y;
+            ball.velocityX = 0;
+            ball.velocityY = 0;
+            ui.textContent = `LEVEL ${levelIndex + 1} • Deaths: ${deaths}`;
+        }
+        
+        // Event listeners for keyboard
+        window.addEventListener('keydown', function(e) {
+            if (!gameActive) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    keys.left = true;
+                    break;
+                case 'ArrowRight':
+                    keys.right = true;
+                    break;
+                case 'ArrowUp':
+                    keys.up = true;
+                    
+                    // JUMP CODE - WHEN UP BUTTON IS PRESSED, BALL JUMPS!
+                    if (ball.onGround) {
+                        ball.velocityY = ball.jumpForce; // Apply upward force
+                        ball.onGround = false;
+                        ball.isJumping = true;
+                        jumpIndicator.textContent = "JUMPING! 🚀";
+                        jumpIndicator.style.color = "#ff0000";
+                    }
+                    break;
+            }
+        });
+        
+        window.addEventListener('keyup', function(e) {
+            switch(e.key) {
+                case 'ArrowLeft':
+                    keys.left = false;
+                    break;
+                case 'ArrowRight':
+                    keys.right = false;
+                    break;
+                case 'ArrowUp':
+                    keys.up = false;
+                    setTimeout(() => {
+                        if (gameActive) {
+                            jumpIndicator.textContent = "Press UP to Jump";
+                            jumpIndicator.style.color = "yellow";
+                        }
+                    }, 300);
+                    break;
+            }
+        });
+        
+        // Next level button
+        nextLevelBtn.addEventListener('click', function() {
+            levelComplete.style.display = 'none';
+            currentLevel++;
+            deaths = 0;
+            loadLevel(currentLevel);
+            gameActive = true;
+        });
+        
+        // Restart button
+        restartBtn.addEventListener('click', function() {
+            gameOver.style.display = 'none';
+            currentLevel = 0;
+            deaths = 0;
+            totalDeaths = 0;
+            gameActive = true;
+            loadLevel(currentLevel);
+        });
+        
+        // Check collision between ball and rectangle
+        function checkCollision(ball, rect) {
+            // Find the closest point on the rectangle to the circle
+            let closestX = Math.max(rect.x, Math.min(ball.x, rect.x + rect.width));
+            let closestY = Math.max(rect.y, Math.min(ball.y, rect.y + rect.height));
+            
+            // Calculate the distance between the circle's center and this closest point
+            let distanceX = ball.x - closestX;
+            let distanceY = ball.y - closestY;
+            
+            // If the distance is less than the circle's radius, they are colliding
+            return (distanceX * distanceX + distanceY * distanceY) < (ball.radius * ball.radius);
+        }
+        
+        // Game update function
+        function update() {
+            if (!gameActive) return;
+            
+            const level = levels[currentLevel];
+            
+            // Handle horizontal movement
+            ball.velocityX = 0;
+            if (keys.left) ball.velocityX = -ball.speed;
+            if (keys.right) ball.velocityX = ball.speed;
+            
+            // Apply gravity
+            ball.velocityY += ball.gravity;
+            
+            // Store previous position for collision detection
+            let prevX = ball.x;
+            let prevY = ball.y;
+            
+            // Update position
+            ball.x += ball.velocityX;
+            ball.y += ball.velocityY;
+            
+            // Check boundaries
+            if (ball.x - ball.radius < 0) {
+                ball.x = ball.radius;
+            }
+            if (ball.x + ball.radius > canvas.width) {
+                ball.x = canvas.width - ball.radius;
+            }
+            
+            // Reset ground state
+            ball.onGround = false;
+            
+            // Check platform collisions
+            for (let platform of level.platforms) {
+                // Check if ball is colliding with platform
+                if (checkCollision(ball, platform)) {
+                    // Calculate overlap
+                    let overlapX = 0;
+                    let overlapY = 0;
+                    
+                    // Check if coming from above (landing on platform)
+                    if (prevY + ball.radius <= platform.y && ball.velocityY > 0) {
+                        overlapY = (ball.y + ball.radius) - platform.y;
+                        ball.y -= overlapY;
+                        ball.velocityY = 0;
+                        ball.onGround = true;
+                        ball.isJumping = false;
+                    } 
+                    // Check if coming from below (hitting platform from under)
+                    else if (prevY - ball.radius >= platform.y + platform.height && ball.velocityY < 0) {
+                        overlapY = (platform.y + platform.height) - (ball.y - ball.radius);
+                        ball.y += overlapY;
+                        ball.velocityY = 0;
+                    }
+                    // Check if coming from left
+                    else if (prevX + ball.radius <= platform.x && ball.velocityX > 0) {
+                        overlapX = (ball.x + ball.radius) - platform.x;
+                        ball.x -= overlapX;
+                        ball.velocityX = 0;
+                    }
+                    // Check if coming from right
+                    else if (prevX - ball.radius >= platform.x + platform.width && ball.velocityX < 0) {
+                        overlapX = (platform.x + platform.width) - (ball.x - ball.radius);
+                        ball.x += overlapX;
+                        ball.velocityX = 0;
+                    }
+                }
+            }
+            
+            // Check spike collisions
+            for (let spike of level.spikes) {
+                if (checkCollision(ball, spike)) {
+                    // Player hit a spike, reset level
+                    deaths++;
+                    totalDeaths++;
+                    loadLevel(currentLevel);
+                    return;
+                }
+            }
+            
+            // Check goal collision
+            if (checkCollision(ball, level.goal)) {
+                // Level completed
+                gameActive = false;
+                levelComplete.style.display = 'block';
+            }
+            
+            // Prevent falling through the bottom
+            if (ball.y - ball.radius > canvas.height) {
+                deaths++;
+                totalDeaths++;
+                loadLevel(currentLevel);
+                return;
+            }
+        }
+        
+        // Draw function
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (currentLevel >= levels.length) return;
+            
+            const level = levels[currentLevel];
+            
+            // Draw background grid for visual reference
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+            
+            // Draw goal
+            const goalGradient = ctx.createRadialGradient(
+                level.goal.x + level.goal.width/2, 
+                level.goal.y + level.goal.height/2, 
+                0,
+                level.goal.x + level.goal.width/2, 
+                level.goal.y + level.goal.height/2, 
+                level.goal.width/2
+            );
+            goalGradient.addColorStop(0, '#ffff00');
+            goalGradient.addColorStop(0.5, '#ffcc00');
+            goalGradient.addColorStop(1, '#ff9900');
+            
+            ctx.fillStyle = goalGradient;
+            ctx.beginPath();
+            ctx.arc(
+                level.goal.x + level.goal.width/2, 
+                level.goal.y + level.goal.height/2, 
+                level.goal.width/2, 
+                0, Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Add star effect to goal
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                let angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+                let x = level.goal.x + level.goal.width/2 + Math.cos(angle) * level.goal.width/2;
+                let y = level.goal.y + level.goal.height/2 + Math.sin(angle) * level.goal.width/2;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+                
+                let nextAngle = ((i + 1) * Math.PI * 2) / 5 - Math.PI / 2;
+                let innerX = level.goal.x + level.goal.width/2 + Math.cos((angle + nextAngle) / 2) * level.goal.width/4;
+                let innerY = level.goal.y + level.goal.height/2 + Math.sin((angle + nextAngle) / 2) * level.goal.width/4;
+                ctx.lineTo(innerX, innerY);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Draw "GOAL" text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(
+                'GOAL', 
+                level.goal.x + level.goal.width/2, 
+                level.goal.y + level.goal.height/2 + 5
+            );
+            
+            // Draw platforms
+            for (let platform of level.platforms) {
+                // Platform base
+                ctx.fillStyle = '#555';
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // Platform top highlight
+                ctx.fillStyle = '#888';
+                ctx.fillRect(platform.x, platform.y, platform.width, 5);
+                
+                // Platform edge
+                ctx.strokeStyle = '#777';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            }
+            
+            // Draw spikes
+            for (let spike of level.spikes) {
+                ctx.fillStyle = '#ff0000';
+                ctx.beginPath();
+                ctx.moveTo(spike.x + spike.width / 2, spike.y);
+                ctx.lineTo(spike.x, spike.y + spike.height);
+                ctx.lineTo(spike.x + spike.width, spike.y + spike.height);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Spike shadow
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.moveTo(spike.x + spike.width / 2, spike.y + spike.height);
+                ctx.lineTo(spike.x, spike.y + spike.height);
+                ctx.lineTo(spike.x + spike.width / 2, spike.y + spike.height - 5);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Draw ball with gradient for 3D effect
+            const gradient = ctx.createRadialGradient(
+                ball.x - 5, ball.y - 5, 0,
+                ball.x, ball.y, ball.radius
+            );
+            gradient.addColorStop(0, '#88ff88');
+            gradient.addColorStop(0.6, '#00ff00');
+            gradient.addColorStop(1, '#008800');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add shine to ball
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.beginPath();
+            ctx.arc(ball.x - 5, ball.y - 5, ball.radius/3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw shadow if on ground
+            if (ball.onGround) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.ellipse(ball.x, ball.y + ball.radius + 5, ball.radius, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start the game
+        loadLevel(currentLevel);
+        gameLoop();
+    </script>
+</body>
+</html>
